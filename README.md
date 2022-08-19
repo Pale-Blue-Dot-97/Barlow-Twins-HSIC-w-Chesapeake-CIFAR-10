@@ -1,9 +1,9 @@
-# Barlow Twins and HSIC
+# Barlow Twins and HSIC (with Chesapeake-CIFAR-10 style Dataset)
 
-> Unofficial Pytorch implementation for Barlow Twins and HSIC_SSL on small datasets (CIFAR10, STL10, and Tiny ImageNet).
+> Unofficial Pytorch implementation for Barlow Twins and HSIC_SSL on small datasets (CIFAR10, STL10, and Tiny ImageNet). Forked from [**Barlow Twins and HSIC**](https://github.com/yaohungt/Barlow-Twins-HSIC) to include support for a CIFAR-10 style dataset made from the [**Chesapeake dataset**](https://www.chesapeakeconservancy.org/conservation-innovation-center/high-resolution-data/land-cover-data-project/)
 
 Correspondence to: 
-  - Yao-Hung Hubert Tsai (yaohungt@cs.cmu.edu)
+  - Harry Baker (hjbaker97@gmail.com or hjb1d20@soton.ac.uk)
 
 ## Technical Report
 [**A Note on Connecting Barlow Twins with Negative-Samples-Free Contrastive Learning**](https://arxiv.org/pdf/2104.13712.pdf)<br>
