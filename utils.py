@@ -1,6 +1,5 @@
 from PIL import Image
 from torchvision import transforms
-from torchvision.datasets import CIFAR10
 
 # for cifar10 (32x32)
 class CifarPairTransform:
