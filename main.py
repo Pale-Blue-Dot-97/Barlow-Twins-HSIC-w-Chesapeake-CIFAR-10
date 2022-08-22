@@ -7,11 +7,12 @@ import torch.optim as optim
 from thop import profile, clever_format
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+import torchvision
 
 import utils
 from model import Model
+from datasets import Chesapeake_CIFAR10
 
-import torchvision
 
 if torch.cuda.is_available():
     torch.backends.cudnn.benchmark = True
@@ -117,6 +118,7 @@ def test(net, memory_data_loader, test_data_loader):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train SimCLR')
+    parser.add_argument('-r', default="data", type=str, help="Root to dataset")
     parser.add_argument('--dataset', default='cifar10', type=str, help='Dataset: cifar10 or tiny_imagenet or stl10')
     parser.add_argument('--feature_dim', default=128, type=int, help='Feature dim for latent vector')
     parser.add_argument('--temperature', default=0.5, type=float, help='Temperature used in softmax')
@@ -143,25 +145,32 @@ if __name__ == '__main__':
     
     # data prepare
     if dataset == 'cifar10':
-        train_data = torchvision.datasets.CIFAR10(root='data', train=True, \
+        train_data = torchvision.datasets.CIFAR10(root=args.r, train=True, \
                                                   transform=utils.CifarPairTransform(train_transform = True), download=True)
-        memory_data = torchvision.datasets.CIFAR10(root='data', train=True, \
+        memory_data = torchvision.datasets.CIFAR10(root=args.r, train=True, \
                                                   transform=utils.CifarPairTransform(train_transform = False), download=True)
-        test_data = torchvision.datasets.CIFAR10(root='data', train=False, \
+        test_data = torchvision.datasets.CIFAR10(root=args.r, train=False, \
                                                   transform=utils.CifarPairTransform(train_transform = False), download=True)
+    if dataset == 'chesapeake_cifar10':
+        train_data = Chesapeake_CIFAR10(root=args.r, train=True, \
+                                                  transform=utils.CifarPairTransform(train_transform = True))
+        memory_data = Chesapeake_CIFAR10(root=args.r, train=True, \
+                                                  transform=utils.CifarPairTransform(train_transform = False))
+        test_data = Chesapeake_CIFAR10(root=args.r, train=False, \
+                                                  transform=utils.CifarPairTransform(train_transform = False))
     elif dataset == 'stl10':
-        train_data = torchvision.datasets.STL10(root='data', split="train+unlabeled", \
+        train_data = torchvision.datasets.STL10(root=args.r, split="train+unlabeled", \
                                                   transform=utils.StlPairTransform(train_transform = True), download=True)
-        memory_data = torchvision.datasets.STL10(root='data', split="train", \
+        memory_data = torchvision.datasets.STL10(root=args.r, split="train", \
                                                   transform=utils.StlPairTransform(train_transform = False), download=True)
-        test_data = torchvision.datasets.STL10(root='data', split="test", \
+        test_data = torchvision.datasets.STL10(root=args.r, split="test", \
                                                   transform=utils.StlPairTransform(train_transform = False), download=True)
     elif dataset == 'tiny_imagenet':
-        train_data = torchvision.datasets.ImageFolder('data/tiny-imagenet-200/train', \
+        train_data = torchvision.datasets.ImageFolder(os.path.join(args.r, 'tiny-imagenet-200', 'train'), \
                                                       utils.TinyImageNetPairTransform(train_transform = True))
-        memory_data = torchvision.datasets.ImageFolder('data/tiny-imagenet-200/train', \
+        memory_data = torchvision.datasets.ImageFolder(os.path.join(args.r, 'tiny-imagenet-200', 'train'), \
                                                       utils.TinyImageNetPairTransform(train_transform = False))
-        test_data = torchvision.datasets.ImageFolder('data/tiny-imagenet-200/val', \
+        test_data = torchvision.datasets.ImageFolder(os.path.join(args.r, 'tiny-imagenet-200', 'val'), \
                                                       utils.TinyImageNetPairTransform(train_transform = False))
     
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=16, pin_memory=True,
@@ -171,7 +180,7 @@ if __name__ == '__main__':
 
     # model setup and optimizer config
     model = Model(feature_dim, dataset).cuda()
-    if dataset == 'cifar10':
+    if dataset in ('cifar10', "chesapeake_cifar10"):
         flops, params = profile(model, inputs=(torch.randn(1, 3, 32, 32).cuda(),))
     elif dataset == 'tiny_imagenet' or dataset == 'stl10':
         flops, params = profile(model, inputs=(torch.randn(1, 3, 64, 64).cuda(),))

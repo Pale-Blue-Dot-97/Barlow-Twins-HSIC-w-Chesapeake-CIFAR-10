@@ -1,8 +1,11 @@
 import os
 from typing import Any, Callable, List, Optional, Tuple
 from glob import glob
+import numpy as np
 from torchvision.datasets import VisionDataset
 from PIL import Image
+import rasterio as rt
+from alive_progress import alive_bar
 
 
 class Chesapeake_CIFAR10(VisionDataset):
@@ -23,14 +26,24 @@ class Chesapeake_CIFAR10(VisionDataset):
         
         self.train = train
         
-        self.data: List[Any] = []
-        self.targets: List[Any] = []
-        
         sub_dir = "train" if self.train else "test"
-        
         sub_dir_path = os.path.join(self.root, sub_dir)
-        for filename in glob(self.image_glob, root_dir=sub_dir_path):
-            pass
+        
+        image_filenames = glob(os.path.join(sub_dir_path, self.image_glob))
+        target_filenames = glob(os.path.join(sub_dir_path, self.targets_glob))
+        
+        self.data = np.empty((len(image_filenames), 4, 32, 32))
+        self.targets = np.empty((len(image_filenames), 4, 32, 32))
+        
+        print("Constructing Image Dataset")
+        for i, filename in enumerate(image_filenames):
+            with rt.open(filename) as src:
+                self.data[i] = src.read()
+
+        print("Constructing Target Dataset")
+        for i, filename in enumerate(target_filenames):
+            with rt.open(filename) as src:
+                self.targets[i] = src.read()
         
     
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
