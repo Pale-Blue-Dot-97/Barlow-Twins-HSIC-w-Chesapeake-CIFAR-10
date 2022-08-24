@@ -69,7 +69,12 @@ class Chesapeake_CIFAR10(VisionDataset):
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        label = Counter(target).most_common()[0][0]
+        print(f"{target=}")
+        modes = Counter(target).most_common()
+        
+        print(f"{modes=}")
+        
+        label = modes[0][0]
         return img, label
 
     def __len__(self) -> int:
