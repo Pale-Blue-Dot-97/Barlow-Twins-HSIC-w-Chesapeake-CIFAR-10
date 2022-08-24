@@ -1,5 +1,5 @@
 import os
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple
 from glob import glob
 from collections import Counter
 
@@ -7,7 +7,6 @@ import numpy as np
 from torchvision.datasets import VisionDataset
 from PIL import Image
 import rasterio as rt
-from alive_progress import alive_bar
 
 
 class Chesapeake_CIFAR10(VisionDataset):
