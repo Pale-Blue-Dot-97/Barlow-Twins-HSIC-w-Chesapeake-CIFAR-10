@@ -1,6 +1,8 @@
 import os
 from typing import Any, Callable, List, Optional, Tuple
 from glob import glob
+from collections import Counter
+
 import numpy as np
 from torchvision.datasets import VisionDataset
 from PIL import Image
@@ -45,6 +47,8 @@ class Chesapeake_CIFAR10(VisionDataset):
             with rt.open(filename) as src:
                 self.targets[i] = src.read()
         
+        self.classes = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+        
     
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         """
@@ -66,7 +70,8 @@ class Chesapeake_CIFAR10(VisionDataset):
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        return img, target
+        label = Counter(target).most_common()[0][0]
+        return img, label
 
     def __len__(self) -> int:
         return len(self.data)
