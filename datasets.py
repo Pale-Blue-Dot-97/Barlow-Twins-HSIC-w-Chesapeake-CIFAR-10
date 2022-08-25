@@ -54,6 +54,7 @@ class Chesapeake_CIFAR10(VisionDataset):
         if self.target_transform is not None:
             target = self.target_transform(target)
 
+        target = torch.flatten(target).tolist()
         modes = Counter(target).most_common()
 
         label = modes[0][0]
