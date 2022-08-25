@@ -11,7 +11,10 @@ class Model(nn.Module):
         self.f = []
         for name, module in resnet50().named_children():
             if name == 'conv1':
-                module = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+                if dataset == "chesapeake_cifar10":
+                    module = nn.Conv2d(4, 64, kernel_size=3, stride=1, padding=1, bias=False)
+                else:
+                    module = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
             if dataset in ('cifar10', "chesapeake_cifar10"):
                 if not isinstance(module, nn.Linear) and not isinstance(module, nn.MaxPool2d):
                     self.f.append(module)
