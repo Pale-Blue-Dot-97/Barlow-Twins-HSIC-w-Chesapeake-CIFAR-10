@@ -58,7 +58,6 @@ class Chesapeake_CIFAR10(VisionDataset):
         modes = Counter(target).most_common()
 
         label = modes[0][0]
-        print(label)
         return img, label
 
     def __len__(self) -> int:
