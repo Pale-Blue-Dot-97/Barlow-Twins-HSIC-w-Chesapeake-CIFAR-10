@@ -11,7 +11,6 @@ class Model(nn.Module):
         self.f = []
         for name, module in resnet50().named_children():
             if name == 'conv1':
-                print(dataset)
                 if dataset == "chesapeake_cifar10":
                     module = nn.Conv2d(4, 64, kernel_size=3, stride=1, padding=1, bias=False)
                 else:
@@ -29,7 +28,6 @@ class Model(nn.Module):
                                nn.ReLU(inplace=True), nn.Linear(512, feature_dim, bias=True))
 
     def forward(self, x):
-        print(x.size())
         x = self.f(x)
         feature = torch.flatten(x, start_dim=1)
         out = self.g(feature)

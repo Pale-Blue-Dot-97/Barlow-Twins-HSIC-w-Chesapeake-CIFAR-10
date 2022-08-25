@@ -180,8 +180,10 @@ if __name__ == '__main__':
 
     # model setup and optimizer config
     model = Model(feature_dim, dataset).cuda()
-    if dataset == 'cifar10' or dataset == "chesapeake_cifar10":
+    if dataset == 'cifar10':
         flops, params = profile(model, inputs=(torch.randn(1, 3, 32, 32).cuda(),))
+    if dataset == "chesapeake_cifar10":
+        flops, params = profile(model, inputs=(torch.randn(1, 4, 32, 32).cuda(),))
     elif dataset == 'tiny_imagenet' or dataset == 'stl10':
         flops, params = profile(model, inputs=(torch.randn(1, 3, 64, 64).cuda(),))
 
