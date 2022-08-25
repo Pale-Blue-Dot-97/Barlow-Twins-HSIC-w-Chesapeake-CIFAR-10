@@ -1,5 +1,65 @@
 from PIL import Image
+import torch
+from torch import Tensor
 from torchvision import transforms
+from torchvision.transforms import functional_tensor as ft
+
+
+class DetachedColorJitter(transforms.ColorJitter):
+    """Sends RGB channels of multi-spectral images to be transformed by :class:`ColorJitter`."""
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+    def forward(self, img: Tensor) -> Tensor:
+        """Detaches RGB channels of input image to be sent to :class:`ColorJitter`.
+        All other channels bypass :class:`ColorJitter` and are concatenated onto the colour jittered RGB channels.
+        Args:
+            img (Tensor): Input image.
+        Raises:
+            ValueError: If number of channels of input ``img`` is 2.
+        Returns:
+            Tensor: Color jittered image.
+        """
+        channels = ft.get_image_num_channels(img)
+
+        jitter_img : Tensor
+        if channels > 3:
+            rgb_jitter = super().forward(img[:3])
+            jitter_img = torch.cat((rgb_jitter, img[3:]), 0)
+
+        elif channels in (1, 3):
+            jitter_img = super().forward(img)
+
+        else:
+            raise ValueError(f"{channels} channel images are not supported!")
+
+        return jitter_img
+
+
+class ChesapeakeCifarPairTransform:
+    def __init__(self, train_transform = True, pair_transform = True):
+        if train_transform is True:
+            self.transform = transforms.Compose([
+                transforms.RandomResizedCrop(32),
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.RandomApply([DetachedColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
+                #transforms.RandomGrayscale(p=0.2),
+                transforms.ToTensor(),
+                transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])])
+        else:
+            self.transform = transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])])
+        self.pair_transform = pair_transform
+    def __call__(self, x):
+        if self.pair_transform is True:
+            y1 = self.transform(x)
+            y2 = self.transform(x)
+            return y1, y2
+        else:
+            return self.transform(x)
+
 
 # for cifar10 (32x32)
 class CifarPairTransform:

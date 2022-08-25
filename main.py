@@ -153,11 +153,11 @@ if __name__ == '__main__':
                                                   transform=utils.CifarPairTransform(train_transform = False), download=True)
     if dataset == 'chesapeake_cifar10':
         train_data = Chesapeake_CIFAR10(root=args.r, train=True, \
-                                                  transform=utils.CifarPairTransform(train_transform = True))
+                                                  transform=utils.ChesapeakeCifarPairTransform(train_transform = True))
         memory_data = Chesapeake_CIFAR10(root=args.r, train=True, \
-                                                  transform=utils.CifarPairTransform(train_transform = False))
+                                                  transform=utils.ChesapeakeCifarPairTransform(train_transform = False))
         test_data = Chesapeake_CIFAR10(root=args.r, train=False, \
-                                                  transform=utils.CifarPairTransform(train_transform = False))
+                                                  transform=utils.ChesapeakeCifarPairTransform(train_transform = False))
     elif dataset == 'stl10':
         train_data = torchvision.datasets.STL10(root=args.r, split="train+unlabeled", \
                                                   transform=utils.StlPairTransform(train_transform = True), download=True)
