@@ -15,7 +15,7 @@ class Model(nn.Module):
                     module = nn.Conv2d(4, 64, kernel_size=3, stride=1, padding=1, bias=False)
                 else:
                     module = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
-            if dataset in ('cifar10', "chesapeake_cifar10"):
+            if dataset == 'cifar10' or dataset == "chesapeake_cifar10":
                 if not isinstance(module, nn.Linear) and not isinstance(module, nn.MaxPool2d):
                     self.f.append(module)
             elif dataset == 'tiny_imagenet' or dataset == 'stl10':
