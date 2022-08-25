@@ -50,7 +50,7 @@ class ChesapeakeCifarPairTransform:
                 transforms.Normalize([0.4914, 0.4822, 0.4465, 0.4914], [0.2023, 0.1994, 0.2010, 0.2023])])
         else:
             self.transform = transforms.Compose([
-                    transforms.ToTensor(),
+                    #transforms.ToTensor(),
                     transforms.Normalize([0.4914, 0.4822, 0.4465, 0.4914], [0.2023, 0.1994, 0.2010, 0.2023])])
         self.pair_transform = pair_transform
     def __call__(self, x):
