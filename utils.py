@@ -23,7 +23,7 @@ class DetachedColorJitter(transforms.ColorJitter):
         """
         channels = ft.get_image_num_channels(img)
 
-        jitter_img : Tensor
+        jitter_img: Tensor
         if channels > 3:
             rgb_jitter = super().forward(img[:3])
             jitter_img = torch.cat((rgb_jitter, img[3:]), 0)
@@ -38,21 +38,36 @@ class DetachedColorJitter(transforms.ColorJitter):
 
 
 class ChesapeakeCifarPairTransform:
-    def __init__(self, train_transform = True, pair_transform = True):
+    def __init__(self, train_transform=True, pair_transform=True):
         if train_transform is True:
-            self.transform = transforms.Compose([
-                transforms.RandomResizedCrop(32),
-                transforms.RandomHorizontalFlip(p=0.5),
-                transforms.RandomApply([DetachedColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
-                #transforms.RandomGrayscale(p=0.2),
-                #transforms.ToTensor(),
-                # Note that 4th band values are copied from Red band.
-                transforms.Normalize([0.4914, 0.4822, 0.4465, 0.4914], [0.2023, 0.1994, 0.2010, 0.2023])])
+            self.transform = transforms.Compose(
+                [
+                    transforms.RandomResizedCrop(32),
+                    transforms.RandomHorizontalFlip(p=0.5),
+                    transforms.RandomApply(
+                        [DetachedColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8
+                    ),
+                    # transforms.RandomGrayscale(p=0.2),
+                    # transforms.ToTensor(),
+                    # Note that 4th band values are copied from Red band.
+                    transforms.Normalize(
+                        [0.4914, 0.4822, 0.4465, 0.4914],
+                        [0.2023, 0.1994, 0.2010, 0.2023],
+                    ),
+                ]
+            )
         else:
-            self.transform = transforms.Compose([
-                    #transforms.ToTensor(),
-                    transforms.Normalize([0.4914, 0.4822, 0.4465, 0.4914], [0.2023, 0.1994, 0.2010, 0.2023])])
+            self.transform = transforms.Compose(
+                [
+                    # transforms.ToTensor(),
+                    transforms.Normalize(
+                        [0.4914, 0.4822, 0.4465, 0.4914],
+                        [0.2023, 0.1994, 0.2010, 0.2023],
+                    )
+                ]
+            )
         self.pair_transform = pair_transform
+
     def __call__(self, x):
         if self.pair_transform is True:
             y1 = self.transform(x)
@@ -64,20 +79,33 @@ class ChesapeakeCifarPairTransform:
 
 # for cifar10 (32x32)
 class CifarPairTransform:
-    def __init__(self, train_transform = True, pair_transform = True):
+    def __init__(self, train_transform=True, pair_transform=True):
         if train_transform is True:
-            self.transform = transforms.Compose([
-                transforms.RandomResizedCrop(32),
-                transforms.RandomHorizontalFlip(p=0.5),
-                transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
-                transforms.RandomGrayscale(p=0.2),
-                transforms.ToTensor(),
-                transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])])
-        else:
-            self.transform = transforms.Compose([
+            self.transform = transforms.Compose(
+                [
+                    transforms.RandomResizedCrop(32),
+                    transforms.RandomHorizontalFlip(p=0.5),
+                    transforms.RandomApply(
+                        [transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8
+                    ),
+                    transforms.RandomGrayscale(p=0.2),
                     transforms.ToTensor(),
-                    transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])])
+                    transforms.Normalize(
+                        [0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]
+                    ),
+                ]
+            )
+        else:
+            self.transform = transforms.Compose(
+                [
+                    transforms.ToTensor(),
+                    transforms.Normalize(
+                        [0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]
+                    ),
+                ]
+            )
         self.pair_transform = pair_transform
+
     def __call__(self, x):
         if self.pair_transform is True:
             y1 = self.transform(x)
@@ -85,16 +113,21 @@ class CifarPairTransform:
             return y1, y2
         else:
             return self.transform(x)
+
 
 # for tiny imagenet (64x64)
 class TinyImageNetPairTransform:
-    def __init__(self, train_transform = True, pair_transform = True):
+    def __init__(self, train_transform=True, pair_transform=True):
         if train_transform is True:
-            self.transform = transforms.Compose([
+            self.transform = transforms.Compose(
+                [
                     transforms.RandomApply(
-                        [transforms.ColorJitter(brightness=0.4, contrast=0.4, 
-                                                saturation=0.4, hue=0.1)], 
-                        p=0.8
+                        [
+                            transforms.ColorJitter(
+                                brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1
+                            )
+                        ],
+                        p=0.8,
                     ),
                     transforms.RandomGrayscale(p=0.1),
                     transforms.RandomResizedCrop(
@@ -105,14 +138,18 @@ class TinyImageNetPairTransform:
                     ),
                     transforms.RandomHorizontalFlip(p=0.5),
                     transforms.ToTensor(),
-                    transforms.Normalize((0.480, 0.448, 0.398), (0.277, 0.269, 0.282))
-                ])
+                    transforms.Normalize((0.480, 0.448, 0.398), (0.277, 0.269, 0.282)),
+                ]
+            )
         else:
-            self.transform = transforms.Compose([
+            self.transform = transforms.Compose(
+                [
                     transforms.ToTensor(),
-                    transforms.Normalize((0.480, 0.448, 0.398), (0.277, 0.269, 0.282))
-                ])
+                    transforms.Normalize((0.480, 0.448, 0.398), (0.277, 0.269, 0.282)),
+                ]
+            )
         self.pair_transform = pair_transform
+
     def __call__(self, x):
         if self.pair_transform is True:
             y1 = self.transform(x)
@@ -121,15 +158,20 @@ class TinyImageNetPairTransform:
         else:
             return self.transform(x)
 
+
 # for stl10 (96x96)
 class StlPairTransform:
-    def __init__(self, train_transform = True, pair_transform = True):
+    def __init__(self, train_transform=True, pair_transform=True):
         if train_transform is True:
-            self.transform = transforms.Compose([
+            self.transform = transforms.Compose(
+                [
                     transforms.RandomApply(
-                        [transforms.ColorJitter(brightness=0.4, contrast=0.4, 
-                                                saturation=0.4, hue=0.1)], 
-                        p=0.8
+                        [
+                            transforms.ColorJitter(
+                                brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1
+                            )
+                        ],
+                        p=0.8,
                     ),
                     transforms.RandomGrayscale(p=0.1),
                     transforms.RandomResizedCrop(
@@ -140,16 +182,20 @@ class StlPairTransform:
                     ),
                     transforms.RandomHorizontalFlip(p=0.5),
                     transforms.ToTensor(),
-                    transforms.Normalize((0.43, 0.42, 0.39), (0.27, 0.26, 0.27))
-                ])
+                    transforms.Normalize((0.43, 0.42, 0.39), (0.27, 0.26, 0.27)),
+                ]
+            )
         else:
-            self.transform = transforms.Compose([
+            self.transform = transforms.Compose(
+                [
                     transforms.Resize(70, interpolation=Image.BICUBIC),
                     transforms.CenterCrop(64),
                     transforms.ToTensor(),
-                    transforms.Normalize((0.43, 0.42, 0.39), (0.27, 0.26, 0.27))
-                ])
+                    transforms.Normalize((0.43, 0.42, 0.39), (0.27, 0.26, 0.27)),
+                ]
+            )
         self.pair_transform = pair_transform
+
     def __call__(self, x):
         if self.pair_transform is True:
             y1 = self.transform(x)
