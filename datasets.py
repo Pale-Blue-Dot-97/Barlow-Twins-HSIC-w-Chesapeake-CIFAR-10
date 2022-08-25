@@ -32,7 +32,7 @@ class Chesapeake_CIFAR10(VisionDataset):
         target_path = os.path.join(sub_dir_path, self.targets_fn)
         
         self.data = torch.load(image_path).type(torch.FloatTensor)
-        self.targets = torch.load(target_path).type(torch.FloatTensor)
+        self.targets = torch.load(target_path)
         
         self.classes = [0, 1, 2, 3, 4, 5, 6, 7, 8]
         
@@ -57,10 +57,7 @@ class Chesapeake_CIFAR10(VisionDataset):
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        print(f"{target=}")
         modes = Counter(target).most_common()
-        
-        print(f"{modes=}")
         
         label = modes[0][0]
         return img, label
