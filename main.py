@@ -89,7 +89,7 @@ def test(net, memory_data_loader, test_data_loader):
         for data_tuple in tqdm(memory_data_loader, desc="Feature extracting"):
             (data, _), target = data_tuple
             target_bank.append(target)
-            feature, out = net(data.cuda(non_blocking=True))
+            feature, _ = net(data.cuda(non_blocking=True))
             feature_bank.append(feature)
         # [D, N]
         feature_bank = torch.cat(feature_bank, dim=0).t().contiguous()
@@ -102,7 +102,7 @@ def test(net, memory_data_loader, test_data_loader):
         for data_tuple in test_bar:
             (data, _), target = data_tuple
             data, target = data.cuda(non_blocking=True), target.cuda(non_blocking=True)
-            feature, out = net(data)
+            feature, _ = net(data)
 
             total_num += data.size(0)
             # compute cos similarity between each feature vector and feature bank ---> [B, N]
