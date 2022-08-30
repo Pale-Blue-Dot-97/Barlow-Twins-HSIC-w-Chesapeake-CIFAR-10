@@ -32,8 +32,8 @@ def train(net, data_loader, train_optimizer):
     for data_tuple in train_bar:
         (pos_1, pos_2), _ = data_tuple
         pos_1, pos_2 = pos_1.cuda(non_blocking=True), pos_2.cuda(non_blocking=True)
-        feature_1, out_1 = net(pos_1)
-        feature_2, out_2 = net(pos_2)
+        _, out_1 = net(pos_1)
+        _, out_2 = net(pos_2)
         # Barlow Twins
 
         # normalize the representations along the batch dimension
