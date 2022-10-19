@@ -2,33 +2,35 @@ import argparse
 
 import pandas as pd
 import torch
+from torch import Tensor
 import torch.nn as nn
 import torch.optim as optim
+from torch.nn.modules import Module
 from thop import profile, clever_format
 from torch.utils.data import DataLoader
+import torchvision
 from torchvision.datasets import CIFAR10
 from tqdm import tqdm
 
 import utils
 
-import torchvision
 
-
-class Net(nn.Module):
-    def __init__(self, num_class, pretrained_path, dataset):
+class Net(Module):
+    def __init__(self, num_class: int, pretrained_path: str, dataset) -> None:
         super(Net, self).__init__()
 
-        # encoder
+        # Encoder
         from model import Model
 
         self.f = Model(dataset=dataset).f
-        # classifier
+
+        # Classifier
         self.fc = nn.Linear(2048, num_class, bias=True)
         self.load_state_dict(
             torch.load(pretrained_path, map_location="cpu"), strict=False
         )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         x = self.f(x)
         feature = torch.flatten(x, start_dim=1)
         out = self.fc(feature)
@@ -36,7 +38,9 @@ class Net(nn.Module):
 
 
 # train or test for one epoch
-def train_val(net, data_loader, train_optimizer):
+def train_val(
+    net: Module, data_loader: DataLoader, train_optimizer
+) -> tuple[float, float, float]:
     is_train = train_optimizer is not None
     net.train() if is_train else net.eval()
 
@@ -173,6 +177,7 @@ if __name__ == "__main__":
     model = Net(
         num_class=len(train_data.classes), pretrained_path=model_path, dataset=dataset
     ).cuda()
+
     for param in model.f.parameters():
         param.requires_grad = False
 
@@ -181,10 +186,14 @@ if __name__ == "__main__":
     elif dataset == "tiny_imagenet" or dataset == "stl10":
         flops, params = profile(model, inputs=(torch.randn(1, 3, 64, 64).cuda(),))
     flops, params = clever_format([flops, params])
+
     print("# Model Params: {} FLOPs: {}".format(params, flops))
+
     optimizer = optim.Adam(model.fc.parameters(), lr=1e-3, weight_decay=1e-6)
+
     loss_criterion = nn.CrossEntropyLoss()
-    results = {
+
+    results: dict[str, list[float]] = {
         "train_loss": [],
         "train_acc@1": [],
         "train_acc@5": [],

@@ -1,8 +1,9 @@
 import os
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Optional
 from collections import Counter
 
 import torch
+from torch import FloatTensor
 from torchvision.datasets import VisionDataset
 
 
@@ -29,12 +30,12 @@ class Chesapeake_CIFAR10(VisionDataset):
         image_path = os.path.join(sub_dir_path, self.image_fn)
         target_path = os.path.join(sub_dir_path, self.targets_fn)
 
-        self.data = torch.load(image_path).type(torch.FloatTensor)
+        self.data = torch.load(image_path).type(FloatTensor)
         self.targets = torch.load(target_path)
 
         self.classes = [0, 1, 2, 3, 4, 5, 6, 7, 8]
 
-    def __getitem__(self, index: int) -> Tuple[Any, Any]:
+    def __getitem__(self, index: int) -> tuple[Any, Any]:
         """
         Args:
             index (int): Index
@@ -44,8 +45,7 @@ class Chesapeake_CIFAR10(VisionDataset):
         """
         img, target = self.data[index], self.targets[index]
 
-        # doing this so that it is consistent with all other datasets
-        # to return a PIL Image
+        # Doing this so that it is consistent with all other datasets to return a PIL Image.
         # img = Image.fromarray(img)
 
         if self.transform is not None:
@@ -55,7 +55,7 @@ class Chesapeake_CIFAR10(VisionDataset):
             target = self.target_transform(target)
 
         target = torch.flatten(target).tolist()
-        modes = Counter(target).most_common()
+        modes: list[tuple[Any, int]] = Counter(target).most_common()
 
         label = modes[0][0]
         return img, label

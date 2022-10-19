@@ -1,3 +1,5 @@
+from typing import Union
+
 from PIL import Image
 import torch
 from torch import Tensor
@@ -38,7 +40,9 @@ class DetachedColorJitter(transforms.ColorJitter):
 
 
 class ChesapeakeCifarPairTransform:
-    def __init__(self, train_transform=True, pair_transform=True):
+    def __init__(
+        self, train_transform: bool = True, pair_transform: bool = True
+    ) -> None:
         if train_transform is True:
             self.transform = transforms.Compose(
                 [
@@ -77,9 +81,12 @@ class ChesapeakeCifarPairTransform:
             return self.transform(x)
 
 
-# for cifar10 (32x32)
 class CifarPairTransform:
-    def __init__(self, train_transform=True, pair_transform=True):
+    """For Cifar10 (32x32)."""
+
+    def __init__(
+        self, train_transform: bool = True, pair_transform: bool = True
+    ) -> None:
         if train_transform is True:
             self.transform = transforms.Compose(
                 [
@@ -106,7 +113,7 @@ class CifarPairTransform:
             )
         self.pair_transform = pair_transform
 
-    def __call__(self, x):
+    def __call__(self, x: Tensor) -> Union[Tensor, tuple[Tensor, Tensor]]:
         if self.pair_transform is True:
             y1 = self.transform(x)
             y2 = self.transform(x)
@@ -115,9 +122,12 @@ class CifarPairTransform:
             return self.transform(x)
 
 
-# for tiny imagenet (64x64)
 class TinyImageNetPairTransform:
-    def __init__(self, train_transform=True, pair_transform=True):
+    """For Tiny Imagenet (64x64)."""
+
+    def __init__(
+        self, train_transform: bool = True, pair_transform: bool = True
+    ) -> None:
         if train_transform is True:
             self.transform = transforms.Compose(
                 [
@@ -150,7 +160,7 @@ class TinyImageNetPairTransform:
             )
         self.pair_transform = pair_transform
 
-    def __call__(self, x):
+    def __call__(self, x: Tensor) -> Union[Tensor, tuple[Tensor, Tensor]]:
         if self.pair_transform is True:
             y1 = self.transform(x)
             y2 = self.transform(x)
@@ -159,9 +169,12 @@ class TinyImageNetPairTransform:
             return self.transform(x)
 
 
-# for stl10 (96x96)
 class StlPairTransform:
-    def __init__(self, train_transform=True, pair_transform=True):
+    """For stl10 (96x96)."""
+
+    def __init__(
+        self, train_transform: bool = True, pair_transform: bool = True
+    ) -> None:
         if train_transform is True:
             self.transform = transforms.Compose(
                 [
@@ -196,7 +209,7 @@ class StlPairTransform:
             )
         self.pair_transform = pair_transform
 
-    def __call__(self, x):
+    def __call__(self, x: Tensor) -> Union[Tensor, tuple[Tensor, Tensor]]:
         if self.pair_transform is True:
             y1 = self.transform(x)
             y2 = self.transform(x)
