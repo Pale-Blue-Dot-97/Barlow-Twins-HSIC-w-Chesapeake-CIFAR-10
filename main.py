@@ -1,6 +1,9 @@
+from typing import Any, Optional
 import argparse
 import os
 
+import numpy as np
+from nptyping import NDArray, Float, Shape
 import pandas as pd
 import torch
 from torch import Tensor
@@ -10,6 +13,11 @@ from thop import profile, clever_format
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import torchvision
+from alive_progress import alive_bar
+import matplotlib.pyplot as plt
+from matplotlib import offsetbox
+from scipy import stats
+from sklearn.manifold import TSNE
 
 import utils
 from model import Model
@@ -187,6 +195,105 @@ def test(
     return total_top1 / total_num * 100, total_top5 / total_num * 100
 
 
+def stack_rgb(
+    image: NDArray[Shape["3, *, *"], Float],
+    rgb: dict[str, int] = {"R": 0, "G": 1, "B": 2, "NIR": 3},
+    max_value: int = 255,
+) -> NDArray[Shape["*, *, 3"], Float]:
+    """Stacks together red, green and blue image bands to create a RGB array.
+
+    Args:
+        image (NDArray[Shape["3, *, *"], Float]): Image of separate channels to be normalised
+            and reshaped into stacked RGB image.
+        rgb (Dict[str, int]): Optional; Dictionary of which channels in image are the R, G & B bands.
+        max_value (int): Optional; The maximum pixel value in ``image``. e.g. for 8 bit this will be 255.
+
+    Returns:
+        NDArray[Shape["*, *, 3"], Float]: Normalised and stacked red, green, blue arrays into RGB array
+    """
+
+    # Extract R, G, B bands from image and normalise.
+    channels: list[Any] = []
+    for channel in ["R", "G", "B"]:
+        band = image[rgb[channel]] / max_value
+        channels.append(band)
+
+    # Stack together RGB bands.
+    # Note that it has to be order BGR not RGB due to the order numpy stacks arrays.
+    rgb_image: NDArray[Shape["3, *, *"], Any] = np.dstack(
+        (channels[2], channels[1], channels[0])
+    )
+    assert isinstance(rgb_image, np.ndarray)
+    return rgb_image
+
+
+def tsne_cluster(
+    model: Module,
+    test_loader: DataLoader,
+    n_dim: int = 2,
+    filename: Optional[str] = None,
+    title: Optional[str] = None,
+    show: bool = False,
+    save: bool = True,
+) -> None:
+    """Perform TSNE clustering on the embeddings from the model and visualise."""
+    images, targets = next(iter(test_loader))
+
+    model.eval()
+    embeddings: Tensor = model(images.cuda())[0]
+
+    embeddings = embeddings.flatten(start_dim=1)
+
+    tsne = TSNE(n_dim, learning_rate="auto", init="random")
+
+    x = tsne.fit_transform(embeddings)
+
+    x_min, x_max = np.min(x, 0), np.max(x, 0)
+    x = (x - x_min) / (x_max - x_min)
+
+    plt.figure(figsize=(10, 10))
+    ax = plt.subplot(111)
+
+    for i in range(len(x)):
+        plt.text(
+            x[i, 0],
+            x[i, 1],
+            str(targets[i]),
+            color=plt.cm.Set1(targets[i][0] / 10.0),
+            fontdict={"weight": "bold", "size": 9},
+        )
+
+    if hasattr(offsetbox, "AnnotationBbox"):
+        # Only print thumbnails with matplotlib > 1.0.
+        shown_images: NDArray[Any, Any] = np.array([[1.0, 1.0]])  # Just something big.
+
+        for i in range(len(images)):
+            dist = np.sum((x[i] - shown_images) ** 2, 1)
+            if np.min(dist) < 4e-3:
+                # Don’t show points that are too close.
+                continue
+
+            shown_images = np.r_[shown_images, [x[i]]]
+            imagebox = offsetbox.AnnotationBbox(
+                offsetbox.OffsetImage(images[i], cmap=plt.cm.gray_r), x[i]
+            )
+
+            ax.add_artist(imagebox)
+
+    plt.xticks([]), plt.yticks([])
+
+    if title is not None:
+        plt.title(title)
+
+    # Shows and/or saves plot.
+    if show:
+        plt.show()
+    if save:
+        plt.savefig(filename)
+        print("TSNE cluster visualisation SAVED")
+        plt.close()
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train SimCLR")
     parser.add_argument("-r", default="data", type=str, help="Root to dataset")
@@ -194,7 +301,7 @@ if __name__ == "__main__":
         "--dataset",
         default="cifar10",
         type=str,
-        help="Dataset: cifar10 or tiny_imagenet or stl10",
+        help="Choose dataset from: chesapeake_cifar10, cifar10, tiny_imagenet or stl10",
     )
     parser.add_argument(
         "--feature_dim", default=128, type=int, help="Feature dim for latent vector"
@@ -232,6 +339,8 @@ if __name__ == "__main__":
     parser.add_argument("--corr_zero", dest="corr_neg_one", action="store_false")
     parser.set_defaults(corr_neg_one=False)
 
+    parser.add_argument("--cluster_vis", dest="cluster_vis", action="store_true")
+
     # Args parse.
     args = parser.parse_args()
     dataset = args.dataset
@@ -240,6 +349,8 @@ if __name__ == "__main__":
 
     lmbda = args.lmbda
     corr_neg_one = args.corr_neg_one
+
+    cluster_vis = args.cluster_vis
 
     # Data prepare.
     if dataset == "cifar10":
@@ -339,7 +450,9 @@ if __name__ == "__main__":
         flops, params = profile(model, inputs=(torch.randn(1, 3, 64, 64).cuda(),))
 
     flops, params = clever_format([flops, params])
+
     print("# Model Params: {} FLOPs: {}".format(params, flops))
+
     optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-6)
     c = len(memory_data.classes)
 
@@ -353,36 +466,36 @@ if __name__ == "__main__":
         corr_neg_one_str = "neg_corr_"
     else:
         corr_neg_one_str = ""
-    save_name_pre = "{}{}_{}_{}_{}".format(
-        corr_neg_one_str, lmbda, feature_dim, batch_size, dataset
-    )
+    save_name_pre = f"{corr_neg_one_str}{lmbda}_{feature_dim}_{batch_size}_{dataset}"
 
     if not os.path.exists("results"):
         os.mkdir("results")
 
     best_acc = 0.0
 
-    for epoch in range(1, epochs + 1):
-        train_loss = train(model, train_loader, optimizer)
-        if epoch % 5 == 0:
-            results["train_loss"].append(train_loss)
-            test_acc_1, test_acc_5 = test(model, memory_loader, test_loader)
-            results["test_acc@1"].append(test_acc_1)
-            results["test_acc@5"].append(test_acc_5)
+    if cluster_vis:
+        model.load_state_dict(torch.load(f"results/{save_name_pre}_model.pth"))
+        tsne_cluster(model, test_loader, filename=f"results/{save_name_pre}")
+    else:
+        for epoch in range(1, epochs + 1):
+            train_loss = train(model, train_loader, optimizer)
+            if epoch % 5 == 0:
+                results["train_loss"].append(train_loss)
+                test_acc_1, test_acc_5 = test(model, memory_loader, test_loader)
+                results["test_acc@1"].append(test_acc_1)
+                results["test_acc@5"].append(test_acc_5)
 
-            # Save statistics.
-            data_frame = pd.DataFrame(data=results, index=range(5, epoch + 1, 5))
-            data_frame.to_csv(
-                "results/{}_statistics.csv".format(save_name_pre), index_label="epoch"
-            )
-
-            if test_acc_1 > best_acc:
-                best_acc = test_acc_1
-                torch.save(
-                    model.state_dict(), "results/{}_model.pth".format(save_name_pre)
+                # Save statistics.
+                data_frame = pd.DataFrame(data=results, index=range(5, epoch + 1, 5))
+                data_frame.to_csv(
+                    f"results/{save_name_pre}_statistics.csv", index_label="epoch"
                 )
-        if epoch % 50 == 0:
-            torch.save(
-                model.state_dict(),
-                "results/{}_model_{}.pth".format(save_name_pre, epoch),
-            )
+
+                if test_acc_1 > best_acc:
+                    best_acc = test_acc_1
+                    torch.save(model.state_dict(), f"results/{save_name_pre}_model.pth")
+            if epoch % 50 == 0:
+                torch.save(
+                    model.state_dict(),
+                    f"results/{save_name_pre}_model_{epoch}.pth",
+                )
