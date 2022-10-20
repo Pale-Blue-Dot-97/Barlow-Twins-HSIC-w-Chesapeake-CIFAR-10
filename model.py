@@ -30,10 +30,10 @@ class Model(Module):
                 if not isinstance(module, nn.Linear):
                     layers.append(module)
 
-        # Encoder
+        # Encoder.
         self.f = nn.Sequential(*layers)
 
-        # projection head
+        # Projection head.
         self.g = nn.Sequential(
             nn.Linear(2048, 512, bias=False),
             nn.BatchNorm1d(512),
