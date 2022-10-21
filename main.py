@@ -25,6 +25,9 @@ from datasets import Chesapeake_CIFAR10
 if torch.cuda.is_available():
     torch.backends.cudnn.benchmark = True
 
+use_cuda = torch.cuda.is_available()
+device = torch.device("gpu:0" if use_cuda else "cpu")
+
 
 def off_diagonal(x: Tensor) -> Tensor:
     """Return a flattened view of the off-diagonal elements of a square matrix.
@@ -46,7 +49,7 @@ def train(net: Module, data_loader: DataLoader, train_optimizer) -> float:
     Args:
         net (Module): Network to train.
         data_loader (DataLoader): Dataloader of training data.
-        train_optimizer (_type_): Optimiser for training.
+        train_optimizer: Optimiser for training.
 
     Returns:
         float: Average training loss.
@@ -195,7 +198,7 @@ def test(
 
 def stack_rgb(
     image: NDArray[Shape["3, *, *"], Float],
-    rgb: dict[str, int] = {"R": 0, "G": 1, "B": 2, "NIR": 3},
+    rgb: dict[str, int] = {"R": 0, "G": 1, "B": 2},
     max_value: int = 255,
 ) -> NDArray[Shape["*, *, 3"], Float]:
     """Stacks together red, green and blue image bands to create a RGB array.
@@ -235,12 +238,17 @@ def tsne_cluster(
     save: bool = True,
 ) -> None:
     """Perform TSNE clustering on the embeddings from the model and visualise."""
-    images, targets = next(iter(test_loader))
+    image_pair, targets = next(iter(test_loader))
+
+    images = image_pair[0]
+
+    targets = targets.detach().numpy()
 
     model.eval()
-    embeddings: Tensor = model(images.cuda())[0]
 
-    embeddings = embeddings.flatten(start_dim=1)
+    embeddings: Tensor = model.f(images.to(device))
+
+    embeddings = embeddings.flatten(start_dim=1).detach().numpy()
 
     tsne = TSNE(n_dim, learning_rate="auto", init="random")
 
@@ -257,10 +265,13 @@ def tsne_cluster(
             x[i, 0],
             x[i, 1],
             str(targets[i]),
-            color=plt.cm.Set1(targets[i][0] / 10.0),
+            color=plt.cm.Set1(targets[i] / 10.0),
             fontdict={"weight": "bold", "size": 9},
         )
 
+    images = images.detach().numpy()
+    print(np.max(images))
+    images = [stack_rgb(image, max_value=65536) for image in images]
     if hasattr(offsetbox, "AnnotationBbox"):
         # Only print thumbnails with matplotlib > 1.0.
         shown_images: NDArray[Any, Any] = np.array([[1.0, 1.0]])  # Just something big.
@@ -448,13 +459,13 @@ if __name__ == "__main__":
     )
 
     # Model setup and optimizer config.
-    model = Model(feature_dim, dataset).cuda()
+    model = Model(feature_dim, dataset).to(device)
     if dataset == "cifar10":
-        flops, params = profile(model, inputs=(torch.randn(1, 3, 32, 32).cuda(),))
+        flops, params = profile(model, inputs=(torch.randn(1, 3, 32, 32).to(device),))
     if dataset == "chesapeake_cifar10":
-        flops, params = profile(model, inputs=(torch.randn(1, 4, 32, 32).cuda(),))
+        flops, params = profile(model, inputs=(torch.randn(1, 4, 32, 32).to(device),))
     elif dataset == "tiny_imagenet" or dataset == "stl10":
-        flops, params = profile(model, inputs=(torch.randn(1, 3, 64, 64).cuda(),))
+        flops, params = profile(model, inputs=(torch.randn(1, 3, 64, 64).to(device),))
 
     flops, params = clever_format([flops, params])
 
@@ -485,8 +496,12 @@ if __name__ == "__main__":
     best_acc = 0.0
 
     if cluster_vis:
-        model.load_state_dict(torch.load(f"results/{save_name_pre}_model.pth"))
-        tsne_cluster(model, test_loader, filename=f"results/{save_name_pre}")
+        model.load_state_dict(
+            torch.load(f"results/{save_name_pre}_model.pth", map_location="cpu")
+        )
+        tsne_cluster(
+            model, test_loader, filename=f"results/{save_name_pre}_tsne_cluster_vis.png"
+        )
     else:
         for epoch in range(1, epochs + 1):
             train_loss = train(model, train_loader, optimizer)
