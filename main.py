@@ -13,10 +13,8 @@ from thop import profile, clever_format
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import torchvision
-from alive_progress import alive_bar
 import matplotlib.pyplot as plt
 from matplotlib import offsetbox
-from scipy import stats
 from sklearn.manifold import TSNE
 
 import utils
@@ -335,6 +333,13 @@ if __name__ == "__main__":
         type=float,
         help="Lambda that controls the on- and off-diagonal terms",
     )
+    parser.add_argument(
+        "--save_name_pre",
+        default=None,
+        type=str,
+        help="Prefix for the filename of saved files. Override to load a specific saved model weights.",
+    )
+
     parser.add_argument("--corr_neg_one", dest="corr_neg_one", action="store_true")
     parser.add_argument("--corr_zero", dest="corr_neg_one", action="store_false")
     parser.set_defaults(corr_neg_one=False)
@@ -351,6 +356,8 @@ if __name__ == "__main__":
     corr_neg_one = args.corr_neg_one
 
     cluster_vis = args.cluster_vis
+
+    save_name_pre = args.save_name_pre
 
     # Data prepare.
     if dataset == "cifar10":
@@ -466,7 +473,11 @@ if __name__ == "__main__":
         corr_neg_one_str = "neg_corr_"
     else:
         corr_neg_one_str = ""
-    save_name_pre = f"{corr_neg_one_str}{lmbda}_{feature_dim}_{batch_size}_{dataset}"
+
+    if save_name_pre is None:
+        save_name_pre = (
+            f"{corr_neg_one_str}{lmbda}_{feature_dim}_{batch_size}_{dataset}"
+        )
 
     if not os.path.exists("results"):
         os.mkdir("results")
