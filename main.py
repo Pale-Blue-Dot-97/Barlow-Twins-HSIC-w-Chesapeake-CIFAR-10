@@ -1,7 +1,8 @@
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 import argparse
 import os
 
+import random
 import numpy as np
 from nptyping import NDArray, Float, Shape
 import pandas as pd
@@ -16,6 +17,7 @@ import torchvision
 import matplotlib.pyplot as plt
 from matplotlib import offsetbox
 from sklearn.manifold import TSNE
+from scipy.spatial import distance
 
 import utils
 from model import Model
@@ -228,6 +230,63 @@ def stack_rgb(
     return rgb_image
 
 
+def calc_norm_euc_dist(a: Sequence[int], b: Sequence[int]) -> float:
+    """Calculates the normalised Euclidean distance between two vectors.
+
+    Args:
+        a (Sequence[int]): Vector `A`.
+        b (Sequence[int]): Vector `B`.
+
+    Returns:
+        float: Normalised Euclidean distance between vectors `A` and `B`.
+    """
+    assert len(a) == len(b)
+    euc_dist: float = distance.euclidean(a, b) / len(a)
+
+    assert type(euc_dist) is float
+    return euc_dist
+
+
+def calc_avg_euc_dist(a: Tensor, b: Tensor) -> float:
+    euc_dists = []
+    for i in range(len(a)):
+        euc_dists.append(
+            calc_norm_euc_dist(a[i].detach().numpy(), b[i].detach().numpy())
+        )
+
+    return sum(euc_dists) / len(euc_dists)
+
+
+def euc_dist_test(model: Module, loader) -> float:
+    avg_euc_dist = 0.0
+    model.eval()
+
+    test_bar = tqdm(loader, total=100)
+    i = 0
+    for data_tuple in test_bar:
+        i += 1
+        if i > 100:
+            continue
+        else:
+            (a, b), _ = data_tuple
+            a, b = a.to(device), b.to(device)
+
+            _, out_1 = model(a)
+            _, out_2 = model(b)
+
+            avg_euc_dist += calc_avg_euc_dist(out_1, out_2)
+
+            test_bar.set_description(
+                f"Step [{i}/{100}]: Average Euclidean Distance: {avg_euc_dist}"
+            )
+
+    avg_euc_dist = avg_euc_dist / len(loader)
+
+    print(f"Average Euclidean Distance: {avg_euc_dist}")
+
+    return avg_euc_dist
+
+
 def tsne_cluster(
     model: Module,
     test_loader: DataLoader,
@@ -353,12 +412,19 @@ if __name__ == "__main__":
         type=str,
         help="Prefix for the filename of saved files. Override to load a specific saved model weights.",
     )
+    parser.add_argument(
+        "--seed",
+        default=42,
+        type=int,
+        help="Seed number for replication of results.",
+    )
 
     parser.add_argument("--corr_neg_one", dest="corr_neg_one", action="store_true")
     parser.add_argument("--corr_zero", dest="corr_neg_one", action="store_false")
     parser.set_defaults(corr_neg_one=False)
 
     parser.add_argument("--cluster_vis", dest="cluster_vis", action="store_true")
+    parser.add_argument("--euc_dist", dest="euc_dist", action="store_true")
 
     # Args parse.
     args = parser.parse_args()
@@ -370,8 +436,15 @@ if __name__ == "__main__":
     corr_neg_one = args.corr_neg_one
 
     cluster_vis = args.cluster_vis
+    calc_euc_dist = args.euc_dist
 
     save_name_pre = args.save_name_pre
+
+    seed = args.seed
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.random.manual_seed_all(seed)
 
     # Data prepare.
     if dataset == "cifar10":
@@ -505,6 +578,13 @@ if __name__ == "__main__":
         tsne_cluster(
             model, test_loader, filename=f"results/{save_name_pre}_tsne_cluster_vis.png"
         )
+
+    elif calc_euc_dist:
+        model.load_state_dict(
+            torch.load(f"results/{save_name_pre}_model.pth", map_location="cpu")
+        )
+        euc_dist_test(model, train_loader)
+
     else:
         for epoch in range(1, epochs + 1):
             train_loss = train(model, train_loader, optimizer)
