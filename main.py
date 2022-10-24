@@ -270,8 +270,8 @@ def tsne_cluster(
         )
 
     images = images.detach().numpy()
-    print(np.max(images))
-    images = [stack_rgb(image, max_value=65536) for image in images]
+    images = [stack_rgb(image, max_value=1400) for image in images]
+
     if hasattr(offsetbox, "AnnotationBbox"):
         # Only print thumbnails with matplotlib > 1.0.
         shown_images: NDArray[Any, Any] = np.array([[1.0, 1.0]])  # Just something big.
@@ -284,12 +284,15 @@ def tsne_cluster(
 
             shown_images = np.r_[shown_images, [x[i]]]
             imagebox = offsetbox.AnnotationBbox(
-                offsetbox.OffsetImage(images[i], cmap=plt.cm.gray_r), x[i]
+                offsetbox.OffsetImage(images[i], cmap=plt.cm.gray_r),
+                x[i],
+                frameon=False,
             )
 
             ax.add_artist(imagebox)
 
-    plt.xticks([]), plt.yticks([])
+    # Hides the axes.
+    plt.axis("off")
 
     if title is not None:
         plt.title(title)
@@ -298,7 +301,7 @@ def tsne_cluster(
     if show:
         plt.show()
     if save:
-        plt.savefig(filename)
+        plt.savefig(filename, bbox_inches="tight")
         print("TSNE cluster visualisation SAVED")
         plt.close()
 
